@@ -5,84 +5,111 @@ use lib 'lib';
 use Dungeon;
 use Dungeon::Walker;
 
-my $dungeon_map = Dungeon::Walker::walk();
 my $outfile = "dungeon.png";
-# create a new image
-my %original_brown_td_shader = (
-  r => 173,
-  g => 121,
-  b => 85
-);
 
+my $dungeon_map = Dungeon::Walker::walk();
+my $dungeon_heightmap = Dungeon::get_heightmap();
+
+my $im = GD::Image->new($Dungeon::grid_size{width}, $Dungeon::grid_size{height});
+my $white = $im->colorAllocate(255,255,255);
+$im->transparent($white);
+$im->interlaced('true');
+
+my %original_brown_td_shader = (
+  r => 127,
+  g => 120,
+  b => 99
+);
 my %original_blue_td_shader = (
+  r => 115,
+  g => 127,
+  b => 126
+);
+my %original_black_alpha_shader = (
   r => 85,
   g => 137,
   b => 173
 );
 
-my $im = GD::Image->new($Dungeon::grid_size{width}, $Dungeon::grid_size{height});
-# allocate some colors
-my $white = $im->colorAllocate(255,255,255);
-my $black = $im->colorAllocate(0,0,0);
-$im->transparent($white);
-$im->interlaced('true');
+my %brown_td_shader = %original_brown_td_shader;
+my %blue_td_shader = %original_blue_td_shader;
 
-my %brown_scaler = (
-  r => $original_brown_td_shader{r} * 0.02,
-  g => $original_brown_td_shader{g} * 0.02,
-  b => $original_brown_td_shader{b} * 0.02
-);
+my @brown = ($brown_td_shader{r}, $brown_td_shader{g}, $brown_td_shader{b});
+my @blue = ($blue_td_shader{r}, $blue_td_shader{g}, $blue_td_shader{b});
+my @black = (86, 60, 43);
+my @dark_blue = (71, 80, 80);
+my @dark_brown = (118, 70, 30);
 
-my %blue_scaler = (
-  r => $original_blue_td_shader{r} * 0.02,
-  g => $original_blue_td_shader{g} * 0.02,
-  b => $original_blue_td_shader{b} * 0.02
-);
-
-print $#$dungeon_map;
-
-foreach my $row (0 .. $#$dungeon_map) {
-  my %brown_td_shader = %original_brown_td_shader;
-  my %blue_td_shader = %original_blue_td_shader;
-
+for(my $row = 0; $row <= $#$dungeon_map; $row++) {
   my $current_row = $dungeon_map->[$row];
-  foreach my $col (0 .. $#$current_row) {
-      my $brown = $im->colorResolve(
-        int($brown_td_shader{r}),
-        int($brown_td_shader{g}),
-        int($brown_td_shader{b})
-      ); 
-
-      my $blue = $im->colorResolve(
-        int($blue_td_shader{r}),
-        int($blue_td_shader{g}),
-        int($blue_td_shader{b})
-      ); 
+  
+  for(my $col = 0; $col <= $#$current_row; $col++) {
+      my ($r, $g, $b) = (0, 0, 0);
       
       if($current_row->[$col]) {
-        $im->setPixel($col,$row,$brown);
+        ($r, $g, $b) = interpolate_color($dungeon_heightmap->[$row]->[$col], 0, 49, \@black, \@brown);
       } else {
-        $im->setPixel($col,$row,$blue);
+        $dungeon_heightmap->[$row]->[$col] = Dungeon::random_change_altitude();
+        ($r, $g, $b) = interpolate_color($dungeon_heightmap->[$row]->[$col], 0, 49, \@blue, \@dark_blue);
       }
 
-      $brown_td_shader{r} -= $brown_scaler{r};
-      $brown_td_shader{g} -= $brown_scaler{g};
-      $brown_td_shader{b} -= $brown_scaler{b};
+      if(defined $current_row->[$col - 1]) {
+        if($current_row->[$col - 1] and
+          (
+            $dungeon_map->[$row - 1]->[$col] and
+            $dungeon_map->[$row + 1] ->[$col] and
+            $dungeon_map->[$row]->[$col+1]
+          )
+        ) {
+          if($current_row->[$col]) {
+            ($r, $g, $b) = interpolate_color(50, 0, 100, \@brown, [$r, $g, $b]);
+          } else {
+            ($r, $g, $b) = @dark_brown;
+          }
+        } else {
+          if($current_row->[$col]) {
+            ($r, $g, $b) = @dark_brown;
+          } else {
+            ($r, $g, $b) = interpolate_color(50, 0, 100, \@blue, [$r, $g, $b]);
+          }
+        }
+      }
 
-      # Clamp color values to valid RGB range (0–255)
-      $brown_td_shader{r} = 0 if $brown_td_shader{r} < 0;
-      $brown_td_shader{g} = 0 if $brown_td_shader{g} < 0;
-      $brown_td_shader{b} = 0 if $brown_td_shader{b} < 0;
+      my $color = $im->colorResolve(
+        $r,
+        $g,
+        $b
+      ); 
 
-      $blue_td_shader{r} -= $blue_scaler{r};
-      $blue_td_shader{g} -= $blue_scaler{g};
-      $blue_td_shader{b} -= $blue_scaler{b};
-
-      # Clamp color values to valid RGB range (0–255)
-      $blue_td_shader{r} = 0 if $blue_td_shader{r} < 0;
-      $blue_td_shader{g} = 0 if $blue_td_shader{g} < 0;
-      $blue_td_shader{b} = 0 if $blue_td_shader{b} < 0;
+      $im->setPixel($col, $row, $color);
   }
+}
+
+sub interpolate_color {
+    my ($value, $min, $max, $color1, $color2) = @_;
+    my $ratio = ($value - $min) / ($max - $min);
+
+    my $r = int($color1->[0] + ($color2->[0] - $color1->[0]) * $ratio);
+    my $g = int($color1->[1] + ($color2->[1] - $color1->[1]) * $ratio);
+    my $b = int($color1->[2] + ($color2->[2] - $color1->[2]) * $ratio);
+
+    return ($r, $g, $b);
+}
+
+sub color_to_array {
+  my ($color) = @_;
+
+  return ($color->{r}, $color->{g}, $color->{b}) 
+}
+
+sub colorarray_to_color {
+  my ($color_array) = @_;
+
+  return (
+    r => $color_array->[0],
+    g => $color_array->[1],
+    b => $color_array->[2]
+  );
 }
    
 #my $red = $im->colorAllocate(255,0,0);      
@@ -93,7 +120,7 @@ foreach my $row (0 .. $#$dungeon_map) {
 # And fill it with red
 #$im->fill(50,50,$red);
 # make sure we are writing to a binary stream
-open my $out, '>', $outfile or die "Cannot open $outfile: $!";
+open my $out, '>', $outfile || die "Cannot open $outfile: $!";
 binmode $out;  # Required for binary output
 print $out $im->png;
 close $outfile;

@@ -24,15 +24,16 @@ our %starting_point = (
   y => $Dungeon::grid_size{height} / 2
 );
 
+our $altitude = 0;
+
 our %current_position = (
   x => $Dungeon::Walker::starting_point{x},
   y => $Dungeon::Walker::starting_point{y}
 );
 
-our @directions = ("UP", "DOWN", "LEFT", "RIGHT");
+our @directions = ("UP", "DOWN", "LEFT", "RIGHT"); 
 
 sub walk {
-  print "$max_steps\n\n";
   for(my $i = 0; $i < $max_steps; $i++) {
     my $direction = choose_random_direction();
     my $direction_vector = direction_to_vector($direction);
@@ -107,8 +108,8 @@ sub can_walk {
   );
 
   if(
-    $movement_result{"x"} > $Dungeon::grid_size{width} - ($Dungeon::grid_padding * 2) or
-    $movement_result{"y"} > $Dungeon::grid_size{height} - ($Dungeon::grid_padding * 2) or
+    $movement_result{"x"} > $Dungeon::grid_size{width} - $Dungeon::grid_padding or
+    $movement_result{"y"} > $Dungeon::grid_size{height} - $Dungeon::grid_padding or
     $movement_result{"x"} < $Dungeon::grid_padding or
     $movement_result{"y"} < $Dungeon::grid_padding
   ) {
