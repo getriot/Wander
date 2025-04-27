@@ -13,3 +13,4 @@ Colors and image size are currently not controllable.
 `perl index.pl`
 
 ## Example Output
+![Example output](dungeon.png)
