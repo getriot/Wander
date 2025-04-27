@@ -91,7 +91,7 @@ sub direction_to_vector {
     };
   }
 
-  die "Direction does not exist";
+  return undef;
 }
 
 sub can_walk {
@@ -108,8 +108,8 @@ sub can_walk {
   );
 
   if(
-    $movement_result{"x"} > $Dungeon::grid_size{width} - $Dungeon::grid_padding or
-    $movement_result{"y"} > $Dungeon::grid_size{height} - $Dungeon::grid_padding or
+    $movement_result{"x"} > $Dungeon::grid_size{height} - $Dungeon::grid_padding or
+    $movement_result{"y"} > $Dungeon::grid_size{width} - $Dungeon::grid_padding or
     $movement_result{"x"} < $Dungeon::grid_padding or
     $movement_result{"y"} < $Dungeon::grid_padding
   ) {

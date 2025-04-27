@@ -10,19 +10,19 @@ our @heightmap = map { [ (0) x $Dungeon::grid_size{width} ] } (0..$Dungeon::grid
 our @heightmap_ops = (-1, 0, 1); 
 our @current_altitude = 0;
 
-our $grid_padding = 10;
+our $grid_padding = 24;
 
 sub toggle_cell {
   my (%cell) = @_;
 
   if (
-    $cell{x} >= 0 && $cell{x} < $grid_size{width} &&
-    $cell{y} >= 0 && $cell{y} < $grid_size{height}
+    $cell{x} >= 0 && $cell{x} < $grid_size{height} &&
+    $cell{y} >= 0 && $cell{y} < $grid_size{width}
   ) {
     $grid[$cell{y}][$cell{x}] = 1;
     $heightmap[$cell{y}][$cell{x}] = Dungeon::random_change_altitude();
   } else {
-    die "\n[Error] - Cell out of bounds";
+    return undef;
   }
 
   return $Dungeon::grid[$cell{y}][$cell{x}];
